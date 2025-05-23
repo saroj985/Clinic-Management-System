@@ -9,7 +9,7 @@ import lombok.Data;
 
 public class Doctor {
     @Id
-    @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+    @GeneratedValue(strategy = jakarta.persistence.GenerationType.AUTO)
     @JsonProperty("doctor_id")
     private Integer doctor_id;
     private String name;

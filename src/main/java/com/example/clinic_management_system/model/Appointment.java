@@ -1,5 +1,6 @@
 package com.example.clinic_management_system.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -9,10 +10,12 @@ import java.util.Date;
 @Entity
 public class Appointment {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @SequenceGenerator(name="appointment_seq", sequenceName = "appointment_seq", allocationSize = 1, initialValue = 100)
+        @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "appointment_seq")
     @JsonProperty("appointment_id")
     private Integer appointment_id;
-
+//    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy/MM/dd/HH/mm")
     private Date date;
     private String status;
     private String notes;

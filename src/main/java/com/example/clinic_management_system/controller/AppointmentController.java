@@ -20,8 +20,9 @@ public class AppointmentController {
     }
 
     @DeleteMapping("/cancel/{id}")
-    public void cancel(@PathVariable Integer id) {
+    public String cancel(@PathVariable Integer id) {
         appointmentService.cancelAppointment(id);
+        return "Appointment with ID " + id + " has been cancelled.";
     }
 
     @PutMapping("/reschedule/{id}")

@@ -24,7 +24,7 @@
             box-shadow: 0 4px 16px rgba(44, 62, 80, 0.08);
             margin: 30px auto;
             padding: 32px 28px 24px 28px;
-            max-width: 600px;
+            max-width: 900px;
         }
         h2 {
             color: #2980b9;
@@ -111,6 +111,28 @@
             color: #c0392b;
             border: 1px solid #f5b7b1;
         }
+        .action-btn {
+            padding: 6px 14px;
+            margin: 0 2px;
+            font-size: 0.95em;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+        }
+        .cancel-btn {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .cancel-btn:hover {
+            background: #c0392b;
+        }
+        .reschedule-btn {
+            background: #f1c40f;
+            color: #2d3e50;
+        }
+        .reschedule-btn:hover {
+            background: #f39c12;
+        }
     </style>
 </head>
 <body>
@@ -150,17 +172,32 @@
 <section>
     <h2>Schedule Appointment</h2>
     <form id="appointmentForm">
+        <input type="hidden" name="appointment_id" id="appointment_id">
         <label>Date & Time: <input type="datetime-local" name="date" required></label>
         <label>Status: <input type="text" name="status" value="Scheduled" required></label>
         <label>Notes: <input type="text" name="notes"></label>
-        <label>Doctor ID: <input type="number" name="doctor_id" required></label>
-        <label>Patient ID: <input type="number" name="patient_id" required></label>
-        <button type="submit">Schedule</button>
+        <label>Doc ID: <input type="number" name="doctor_id" required></label>
+        <label>Pat ID: <input type="number" name="patient_id" required></label>
+        <button type="submit" id="appointmentSubmitBtn">Schedule</button>
     </form>
     <div id="appointmentMessage" class="message"></div>
     <h3>Appointments</h3>
     <table id="appointmentsTable">
-        <thead><tr><th>ID</th><th>Date</th><th>Status</th><th>Notes</th><th>Doctor ID</th><th>Patient ID</th></tr></thead>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th>Doc ID</th>
+            <th>Doctor Name</th>
+            <th>Pat ID</th>
+            <th>Patient Name</th>
+            <th>Cancel</th>
+            <th>Reschedule</th>
+        </tr>
+        </thead>
         <tbody></tbody>
     </table>
 </section>
@@ -200,10 +237,80 @@
             const tbody = document.querySelector('#appointmentsTable tbody');
             tbody.innerHTML = '';
             data.forEach(a => {
-                tbody.innerHTML += `<tr><td>${a.appointment_id}</td><td>${a.date ? a.date.replace('T',' ').substring(0,16) : ''}</td><td>${a.status}</td><td>${a.notes || ''}</td><td>${a.doctor && a.doctor.doctor_id}</td><td>${a.patient && a.patient.patient_id}</td></tr>`;
+                let dateStr = '';
+                let timeStr = '';
+                if (a.date) {
+                    if (a.date.includes('T')) {
+                        const [datePart, timePart] = a.date.split('T');
+                        dateStr = datePart || '';
+                        timeStr = timePart ? timePart.substring(0,5) : '';
+                    } else if (a.date.includes('/')) {
+                        const parts = a.date.split('/');
+                        if (parts.length === 5) {
+                            dateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
+                            timeStr = `${parts[3]}:${parts[4]}`;
+                        }
+                    }
+                }
+                tbody.innerHTML += `<tr>
+                    <td>${a.appointment_id}</td>
+                    <td>${dateStr}</td>
+                    <td>${timeStr}</td>
+                    <td>${a.status}</td>
+                    <td>${a.notes || ''}</td>
+                    <td>${a.doctor && a.doctor.doctor_id}</td>
+                    <td>${a.doctor && a.doctor.name}</td>
+                    <td>${a.patient && a.patient.patient_id}</td>
+                    <td>${a.patient && a.patient.name}</td>
+                    <td><button type="button" class="action-btn cancel-btn" onclick="cancelAppointment(${a.appointment_id})">Cancel</button></td>
+                    <td><button type="button" class="action-btn reschedule-btn" onclick="rescheduleAppointment(${a.appointment_id})">Reschedule</button></td>
+                </tr>`;
             });
         });
     }
+    // Cancel appointment (uses /appointments/cancel/{id})
+    function cancelAppointment(id) {
+        if (!confirm('Are you sure you want to cancel this appointment?')) return;
+        fetch('/appointments/cancel/' + id, { method: 'DELETE' })
+            .then(r => {
+                if (r.ok) {
+                    loadAppointments();
+                } else {
+                    alert('Failed to cancel appointment');
+                }
+            });
+    }
+    // Reschedule appointment: pre-fill form and scroll to it
+    function rescheduleAppointment(id) {
+        fetch('/appointments')
+            .then(r => r.json())
+            .then(data => {
+                const appt = data.find(a => a.appointment_id === id);
+                if (!appt) return alert('Appointment not found');
+                document.getElementById('appointment_id').value = appt.appointment_id;
+                // Format date for datetime-local input
+                let dateValue = '';
+                if (appt.date) {
+                    if (appt.date.includes('T')) {
+                        dateValue = appt.date.substring(0,16);
+                    } else if (appt.date.includes('/')) {
+                        // Fallback for custom format: yyyy/MM/dd/HH/mm
+                        const parts = appt.date.split('/');
+                        if (parts.length === 5) {
+                            dateValue = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}T${parts[3].padStart(2,'0')}:${parts[4].padStart(2,'0')}`;
+                        }
+                    }
+                }
+                document.querySelector('#appointmentForm [name="date"]').value = dateValue;
+                document.querySelector('#appointmentForm [name="status"]').value = appt.status || '';
+                document.querySelector('#appointmentForm [name="notes"]').value = appt.notes || '';
+                document.querySelector('#appointmentForm [name="doctor_id"]').value = appt.doctor ? appt.doctor.doctor_id : '';
+                document.querySelector('#appointmentForm [name="patient_id"]').value = appt.patient ? appt.patient.patient_id : '';
+                document.getElementById('appointmentSubmitBtn').textContent = 'Reschedule';
+                document.getElementById('appointmentForm').scrollIntoView({ behavior: 'smooth' });
+            });
+    }
+
     // Add doctor
     document.getElementById('doctorForm').onsubmit = function(e) {
         e.preventDefault();
@@ -257,34 +364,60 @@
             showMessage(messageDiv, 'Failed to add patient: ' + error.message, 'error');
         });
     };
-    // Schedule appointment
+    // Schedule or reschedule appointment
     document.getElementById('appointmentForm').onsubmit = function(e) {
         e.preventDefault();
         const form = e.target;
         const messageDiv = document.getElementById('appointmentMessage');
-        fetch('/appointments/schedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                date: form.date.value,
-                status: form.status.value,
-                notes: form.notes.value,
-                doctor: { doctor_id: parseInt(form.doctor_id.value) },
-                patient: { patient_id: parseInt(form.patient_id.value) }
+        const apptId = form.appointment_id.value;
+        const payload = {
+            date: form.date.value,
+            status: form.status.value,
+            notes: form.notes.value,
+            doctor: { doctor_id: parseInt(form.doctor_id.value) },
+            patient: { patient_id: parseInt(form.patient_id.value) }
+        };
+        if (apptId) {
+            // Reschedule (PUT)
+            fetch('/appointments/reschedule/' + apptId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             })
-        })
-        .then(response => {
-            if (response.ok) {
-                showMessage(messageDiv, 'Appointment created successfully!', 'success');
-                form.reset();
-                loadAppointments();
-            } else {
-                return response.text().then(text => { throw new Error(text); });
-            }
-        })
-        .catch(error => {
-            showMessage(messageDiv, 'Failed to create appointment: ' + error.message, 'error');
-        });
+            .then(response => {
+                if (response.ok) {
+                    showMessage(messageDiv, 'Appointment rescheduled successfully!', 'success');
+                    form.reset();
+                    document.getElementById('appointment_id').value = '';
+                    document.getElementById('appointmentSubmitBtn').textContent = 'Schedule';
+                    loadAppointments();
+                } else {
+                    return response.text().then(text => { throw new Error(text); });
+                }
+            })
+            .catch(error => {
+                showMessage(messageDiv, 'Failed to reschedule appointment: ' + error.message, 'error');
+            });
+        } else {
+            // Schedule new (POST)
+            fetch('/appointments/schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (response.ok) {
+                    showMessage(messageDiv, 'Appointment created successfully!', 'success');
+                    form.reset();
+                    loadAppointments();
+                } else {
+                    return response.text().then(text => { throw new Error(text); });
+                }
+            })
+            .catch(error => {
+                showMessage(messageDiv, 'Failed to create appointment: ' + error.message, 'error');
+            });
+        }
     };
     // Initial load
     loadDoctors();
