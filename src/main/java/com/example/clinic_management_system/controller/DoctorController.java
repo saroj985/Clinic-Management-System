@@ -13,6 +13,24 @@ public class DoctorController {
     @Autowired
     private DoctorService doctorService;
 
+//    @PostMapping("/login")
+//    public String login(@RequestParam String username, @RequestParam String password) {
+//        boolean authenticated = doctorService.authenticate(username, password);
+//        return authenticated ? "Login successful" : "Invalid credentials";
+//    }
+
+    @PostMapping("/login")
+    public String login(@RequestBody Doctor loginRequest) {
+        boolean authenticated = doctorService.authenticate(loginRequest.getUsername(), loginRequest.getPassword());
+        return authenticated ? "Login successful" : "Invalid credentials";
+    }
+    @PostMapping("/register")
+    public String register(@RequestBody Doctor doctor) {
+        doctorService.saveDoctor(doctor);
+        return "Doctor registered successfully";
+    }
+
+
     @PostMapping
     public Doctor save(@RequestBody Doctor d) {
         return doctorService.saveDoctor(d);

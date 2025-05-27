@@ -24,4 +24,8 @@ public class DoctorServiceImpl implements DoctorService {
     public List<Doctor> getAllDoctors() {
         return doctorRepository.findAll();
     }
+    @Override
+    public boolean authenticate(String username, String password) {
+        return doctorRepository.findByUsernameAndPassword(username, password) != null;
+    }
 }

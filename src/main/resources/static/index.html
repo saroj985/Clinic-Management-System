@@ -139,6 +139,29 @@
 <h1>Clinic Management System</h1>
 
 <section>
+    <h2>Dashboard</h2>
+    <label>
+        Date:
+        <input type="date" id="dashboardDate" value="">
+    </label>
+    <div id="dashboard">
+        <p>Appointments: <span id="appointmentsCount"></span></p>
+        <p>Doctors: <span id="doctorsCount"></span></p>
+        <p>Patients: <span id="patientsCount"></span></p>
+    </div>
+    <h3>Doctor-Patient Appointments</h3>
+    <table id="dashboardAppointmentsTable">
+        <thead>
+        <tr>
+            <th>Doctor</th>
+            <th>Patients</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</section>
+
+<section>
     <h2>Add Doctor</h2>
     <form id="doctorForm">
         <label>Name: <input type="text" name="name" required></label>
@@ -211,6 +234,48 @@
         setTimeout(() => { element.style.display = 'none'; }, 3000);
     }
 
+    // Set dashboard date to today by default
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().slice(0, 10);
+        document.getElementById('dashboardDate').value = today;
+        loadDashboard();
+        loadDoctors();
+        loadPatients();
+        loadAppointments();
+    });
+
+    // Dashboard
+    function loadDashboard() {
+        fetch('/dashboard').then(r => r.json()).then(data => {
+            document.getElementById('appointmentsCount').textContent = data.appointmentsCount;
+            document.getElementById('doctorsCount').textContent = data.doctorsCount;
+            document.getElementById('patientsCount').textContent = data.patientsCount;
+        });
+        loadDashboardAppointments();
+    }
+
+    function loadDashboardAppointments() {
+        const date = document.getElementById('dashboardDate').value;
+        fetch('/dashboard/appointments?date=' + date)
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.querySelector('#dashboardAppointmentsTable tbody');
+                tbody.innerHTML = '';
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2">No appointments for this date.</td></tr>';
+                } else {
+                    data.forEach(row => {
+                        tbody.innerHTML += `<tr>
+                            <td>${row.doctor}</td>
+                            <td>${row.patients && row.patients.length ? row.patients.join(', ') : '-'}</td>
+                        </tr>`;
+                    });
+                }
+            });
+    }
+
+    document.getElementById('dashboardDate').addEventListener('change', loadDashboardAppointments);
+
     // Fetch and display doctors
     function loadDoctors() {
         fetch('/doctors').then(r => r.json()).then(data => {
@@ -219,6 +284,7 @@
             data.forEach(d => {
                 tbody.innerHTML += `<tr><td>${d.doctor_id}</td><td>${d.name}</td><td>${d.specialization}</td></tr>`;
             });
+            loadDashboard();
         });
     }
     // Fetch and display patients
@@ -229,6 +295,7 @@
             data.forEach(p => {
                 tbody.innerHTML += `<tr><td>${p.patient_id}</td><td>${p.name}</td><td>${p.dob ? p.dob.substring(0,10) : ''}</td><td>${p.contact || ''}</td></tr>`;
             });
+            loadDashboard();
         });
     }
     // Fetch and display appointments
@@ -266,6 +333,7 @@
                     <td><button type="button" class="action-btn reschedule-btn" onclick="rescheduleAppointment(${a.appointment_id})">Reschedule</button></td>
                 </tr>`;
             });
+            loadDashboard();
         });
     }
     // Cancel appointment (uses /appointments/cancel/{id})
@@ -419,10 +487,6 @@
             });
         }
     };
-    // Initial load
-    loadDoctors();
-    loadPatients();
-    loadAppointments();
 </script>
 </body>
 </html>

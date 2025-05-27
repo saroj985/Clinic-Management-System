@@ -9,4 +9,6 @@ import java.util.List;
 public interface DoctorService {
     Doctor saveDoctor(Doctor doctor);
     List<Doctor> getAllDoctors();
+    boolean authenticate(String username, String password);
+
 }
